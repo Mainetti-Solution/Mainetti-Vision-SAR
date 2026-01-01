@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAR Drone Thermal Ops (Fixed)</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #e0e0e0;
+            --accent: #ff9100;
+            --spot-color: #ff5252;
+            --search-color: #448aff;
+            --id-color: #69f0ae;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { 
+            margin-bottom: 20px; 
+            font-size: 1.5rem; 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+            border-bottom: 2px solid var(--accent); 
+            padding-bottom: 10px; 
+            text-align: center;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 30px;
+            background: #2c2c2c;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        @media (min-width: 600px) {
+            .controls { grid-template-columns: 1fr 1fr; }
+        }
+
+        label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #aaa; font-weight: bold; }
+        
+        select {
+            width: 100%;
+            padding: 12px;
+            background-color: #383838;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 6px;
+            font-size: 1rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        select:focus { border-color: var(--accent); }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        @media (min-width: 768px) {
+            .dashboard { grid-template-columns: 1fr 1fr 1fr; }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            border-left: 6px solid gray;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+        }
+
+        .card.spot { border-left-color: var(--spot-color); }
+        .card.spot .status { color: var(--spot-color); }
+        
+        .card.search { border-left-color: var(--search-color); }
+        .card.search .status { color: var(--search-color); }
+        
+        .card.id { border-left-color: var(--id-color); }
+        .card.id .status { color: var(--id-color); }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+        }
+
+        .data-label { color: #888; font-size: 0.9rem; }
+        .data-value { font-weight: bold; font-size: 1.1rem; text-align: right; }
+
+        .ai-note {
+            margin-top: auto;
+            padding-top: 15px;
+            font-style: italic;
+            color: #aaa;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            border-top: 1px dashed #444;
+        }
+
+        .warning-box {
+            background-color: #3e2723;
+            color: #ffccbc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 1rem;
+            text-align: center;
+            border: 1px solid #ff5722;
+            display: none;
+            width: 100%;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>SAR Tattico (Ottica 9mm)</h1>
+
+    <div class="controls">
+        <div>
+            <label>TARGET DA RICERCARE</label>
+            <select id="targetSelect" onchange="updateDashboard()">
+                <option value="PERSONE">Persona Dispersa</option>
+                <option value="CANI">Cani (Media Taglia)</option>
+                <option value="GATTI">Gatti</option>
+                <option value="CAPRE / PECORE">Capre / Pecore</option>
+                <option value="CAVALLI / PONY">Cavalli / Pony</option>
+                <option value="CERVIDI">Cervi / Caprioli</option>
+                <option value="CINGHIALI">Cinghiali</option>
+                <option value="CONIGLI">Conigli</option>
+                <option value="VOLPI">Volpi</option>
+                <option value="LUPI">Lupi</option>
+                <option value="ORSI">Orsi</option>
+                <option value="MAIALI">Maiali</option>
+                <option value="RODITORI">Roditori</option>
+                <option value="UCCELLI">Uccelli</option>
+            </select>
+        </div>
+        <div>
+            <label>TEMPERATURA AMBIENTE</label>
+            <select id="tempSelect" onchange="updateDashboard()">
+                <option value="<0">Sotto 0°C (Inverno/Gelo)</option>
+                <option value="0-10">Tra 0°C e 10°C</option>
+                <option value="10-20">Tra 10°C e 20°C</option>
+                <option value="20-30">Tra 20°C e 30°C</option>
+                <option value=">30">Sopra 30°C (Estate/Critico)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <div class="card spot">
+            <div class="card-header">
+                <span>Rilevamento</span>
+                <span class="status">SPOT</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Altezza (AGL)</span>
+                <span class="data-value" id="spot-alt">--</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Velocità</span>
+                <span class="data-value" id="spot-vel">--</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Palette</span>
+                <span class="data-value" id="spot-pal">--</span>
+            </div>
+             <div class="data-row">
+                <span class="data-label">Range Temp</span>
+                <span class="data-value" id="spot-range">--</span>
+            </div>
+            <div id="spot-note" class="ai-note">--</div>
+        </div>
+
+        <div class="card search">
+            <div class="card-header">
+                <span>Ricerca</span>
+                <span class="status">SEARCH</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Altezza (AGL)</span>
+                <span class="data-value" id="search-alt">--</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Velocità</span>
+                <span class="data-value" id="search-vel">--</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Palette</span>
+                <span class="data-value" id="search-pal">--</span>
+            </div>
+             <div class="data-row">
+                <span class="data-label">Range Temp</span>
+                <span class="data-value" id="search-range">--</span>
+            </div>
+            <div id="search-note" class="ai-note">--</div>
+        </div>
+
+        <div class="card id">
+            <div class="card-header">
+                <span>Identifica</span>
+                <span class="status">ID</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Altezza (AGL)</span>
+                <span class="data-value" id="id-alt">--</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Velocità</span>
+                <span class="data-value" id="id-vel">--</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Palette</span>
+                <span class="data-value" id="id-pal">--</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Range Temp</span>
+                <span class="data-value" id="id-range">--</span>
+            </div>
+            <div id="id-note" class="ai-note">--</div>
+        </div>
+    </div>
+
+    <div id="global-warning" class="warning-box"></div>
+
+    <script>
+// --- DATI CORRETTI (Chiavi sincronizzate con HTML) ---
+const sarData = {
+    "PERSONE": {
+        "<0": {
+            "SPOT": { "h": "42-60m", "v": "3-5m/s", "p": "Red Hot", "r": "15-45°C", "n": "Alt. limitata a 60m (Wide Lens)" },
+            "SEARCH": { "h": "42-60m", "v": "2-4m/s", "p": "White Hot", "r": "5-45°C", "n": "Delta termico massimo - Ottimo contrasto" },
+            "IDENTIFY": { "h": "28-40m", "v": "1-2m/s", "p": "W/B Hot", "r": "20-38°C", "n": "Dettagli corporei eccellenti" }
+        },
+        "0-10": {
+            "SPOT": { "h": "42-60m", "v": "3-5m/s", "p": "Red Hot", "r": "15-45°C", "n": "Alt. limitata a 60m (Wide Lens)" },
+            "SEARCH": { "h": "42-60m", "v": "2-4m/s", "p": "White Hot", "r": "5-45°C", "n": "Buon contrasto termico" },
+            "IDENTIFY": { "h": "28-40m", "v": "1-2m/s", "p": "W/B Hot", "r": "20-38°C", "n": "Postura e arti ben visibili" }
+        },
+        "10-20": {
+            "SPOT": { "h": "42-60m", "v": "4-6m/s", "p": "Ironbow", "r": "20-45°C", "n": "Alt. limitata a 60m (Wide Lens)" },
+            "SEARCH": { "h": "42-60m", "v": "3-5m/s", "p": "White Hot", "r": "5-45°C", "n": "Alt. limitata a 60m (Wide Lens)" },
+            "IDENTIFY": { "h": "31-45m", "v": "1-2m/s", "p": "W/B Hot", "r": "20-38°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" }
+        },
+        "20-30": {
+            "SPOT": { "h": "35-50m", "v": "3-4m/s", "p": "Rainbow HC", "r": "25-40°C", "n": "Delta termico basso" }, 
+            "SEARCH": { "h": "35-50m", "v": "2-3m/s", "p": "White Hot", "r": "5-45°C", "n": "Delta ridotto - SPOT inaffidabile - Volare BASSO" },
+            "IDENTIFY": { "h": "28-40m", "v": "1-2m/s", "p": "W/B Hot", "r": "20-38°C", "n": "Movimento aiuta identificazione" }
+        },
+        ">30": {
+            "SPOT": { "h": "28-40m", "v": "2-3m/s", "p": "Isoterme", "r": "34-38°C", "n": "CRITICO: Molto difficile" },
+            "SEARCH": { "h": "28-40m", "v": "1-2m/s", "p": "White Hot", "r": "5-45°C", "n": "CRITICO - Delta minimo - Volo MOLTO basso e lento" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-3m/s", "p": "W/B Hot", "r": "20-38°C", "n": "Vel. ridotta per motion blur" }
+        }
+    },
+    "CANI": {
+        "<0": {
+            "SPOT": { "h": "49-70m", "v": "4-6m/s", "p": "Ironbow", "r": "0-42°C", "n": "Range esteso per pelo isolante" },
+            "SEARCH": { "h": "31-45m", "v": "3-4m/s", "p": "White Hot", "r": "5-42°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "IDENTIFY": { "h": "17-25m", "v": "1-2m/s", "p": "Black Hot", "r": "0-36°C", "n": "Alt. ridotta per ottica 9mm (Max 25m)" }
+        },
+        "0-10": {
+            "SPOT": { "h": "49-70m", "v": "4-6m/s", "p": "Ironbow", "r": "0-42°C", "n": "Range esteso per pelo isolante" },
+            "SEARCH": { "h": "31-45m", "v": "3-4m/s", "p": "White Hot", "r": "5-42°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "IDENTIFY": { "h": "17-25m", "v": "1-2m/s", "p": "Black Hot", "r": "0-36°C", "n": "Alt. ridotta per ottica 9mm (Max 25m)" }
+        },
+        "10-20": {
+            "SPOT": { "h": "52-75m", "v": "4-6m/s", "p": "Ironbow", "r": "20-42°C", "n": "Alt. ridotta per ottica 9mm (Max 75m)" },
+            "SEARCH": { "h": "31-45m", "v": "3-4m/s", "p": "White Hot", "r": "5-42°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "IDENTIFY": { "h": "17-25m", "v": "1-2m/s", "p": "Black Hot", "r": "18-36°C", "n": "Alt. ridotta per ottica 9mm (Max 25m)" }
+        },
+        "20-30": {
+            "SPOT": { "h": "35-50m", "v": "3-4m/s", "p": "Rainbow", "r": "20-40°C", "n": "Difficile distinguere rocce" },
+            "SEARCH": { "h": "31-45m", "v": "3-4m/s", "p": "White Hot", "r": "5-42°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "IDENTIFY": { "h": "17-25m", "v": "1-2m/s", "p": "Black Hot", "r": "18-36°C", "n": "Alt. ridotta per ottica 9mm (Max 25m)" }
+        },
+        ">30": {
+            "SPOT": { "h": "20-30m", "v": "2m/s", "p": "Isoterme", "r": "35-40°C", "n": "QUASI IMPOSSIBILE" },
+            "SEARCH": { "h": "31-45m", "v": "2-3m/s", "p": "White Hot", "r": "5-42°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "IDENTIFY": { "h": "17-25m", "v": "1-2m/s", "p": "Black Hot", "r": "18-36°C", "n": "Alt. ridotta per ottica 9mm (Max 25m)" }
+        }
+    },
+    "GATTI": {
+        "<0": {
+            "SPOT": { "h": "31-45m", "v": "3-5m/s", "p": "Ironbow", "r": "18-40°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "SEARCH": { "h": "21-30m", "v": "1-3m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" },
+            "IDENTIFY": { "h": "10-15m", "v": "1-1m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 15m)" }
+        },
+        "0-10": {
+            "SPOT": { "h": "31-45m", "v": "3-5m/s", "p": "Ironbow", "r": "18-40°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "SEARCH": { "h": "21-30m", "v": "1-3m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" },
+            "IDENTIFY": { "h": "10-15m", "v": "1-1m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 15m)" }
+        },
+        "10-20": {
+            "SPOT": { "h": "31-45m", "v": "3-4m/s", "p": "Ironbow", "r": "20-40°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "SEARCH": { "h": "21-30m", "v": "1-3m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" },
+            "IDENTIFY": { "h": "10-15m", "v": "1-1m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 15m)" }
+        },
+        "20-30": {
+             "SPOT": { "h": "15m", "v": "2m/s", "p": "Rain", "r": "25-35°C", "n": "" },
+            "SEARCH": { "h": "21-30m", "v": "2-3m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" },
+            "IDENTIFY": { "h": "10-15m", "v": "1-1m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 15m)" }
+        },
+        ">30": {
+            "SPOT": { "h": "10m", "v": "1m/s", "p": "Iso", "r": "35-40°C", "n": "Critico" },
+            "SEARCH": { "h": "21-30m", "v": "1-2m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" },
+            "IDENTIFY": { "h": "10-15m", "v": "1-1m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 15m)" }
+        }
+    },
+    "CAPRE / PECORE": {
+        "<0": {
+            "SPOT": { "h": "62-90m", "v": "5-7m/s", "p": "Ironbow", "r": "0-42°C", "n": "Alt. ridotta per ottica 9mm (Max 90m)" },
+            "SEARCH": { "h": "38-55m", "v": "4-6m/s", "p": "White Hot", "r": "5-42°C", "n": "Alt. ridotta per ottica 9mm (Max 55m)" },
+            "IDENTIFY": { "h": "21-30m", "v": "2-3m/s", "p": "Black Hot", "r": "0-36°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" }
+        },
+        "0-10": {
+            "SPOT": { "h": "62-90m", "v": "5-7m/s", "p": "Ironbow", "r": "0-42°C", "n": "Range esteso per pelo isolante" },
+            "SEARCH": { "h": "38-55m", "v": "4-6m/s", "p": "White Hot", "r": "5-42°C", "n": "Alt. ridotta per ottica 9mm (Max 55m)" },
+            "IDENTIFY": { "h": "21-30m", "v": "2-3m/s", "p": "Black Hot", "r": "0-36°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" }
+        },
+        "10-20": {
+            "SPOT": { "h": "62-90m", "v": "5-7m/s", "p": "Ironbow", "r": "20-42°C", "n": "Alt. ridotta per ottica 9mm (Max 90m)" },
+            "SEARCH": { "h": "38-55m", "v": "4-6m/s", "p": "White Hot", "r": "5-42°C", "n": "Alt. ridotta per ottica 9mm (Max 55m)" },
+            "IDENTIFY": { "h": "21-30m", "v": "2-3m/s", "p": "Black Hot", "r": "18-36°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" }
+        },
+        "20-30": {
+             "SPOT": { "h": "35-50m", "v": "3-4m/s", "p": "Rainbow", "r": "20-40°C", "n": "" },
+            "SEARCH": { "h": "38-55m", "v": "4-6m/s", "p": "White Hot", "r": "5-42°C", "n": "Alt. ridotta per ottica 9mm (Max 55m)" },
+            "IDENTIFY": { "h": "21-30m", "v": "2-3m/s", "p": "Black Hot", "r": "18-36°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" }
+        },
+        ">30": {
+             "SPOT": { "h": "20-30m", "v": "2m/s", "p": "Isoterme", "r": "35-40°C", "n": "QUASI IMPOSSIBILE" },
+            "SEARCH": { "h": "38-55m", "v": "3-5m/s", "p": "White Hot", "r": "5-42°C", "n": "Alt. ridotta per ottica 9mm (Max 55m)" },
+            "IDENTIFY": { "h": "21-30m", "v": "2-3m/s", "p": "Black Hot", "r": "18-36°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" }
+        }
+    },
+    "CAVALLI / PONY": {
+        "<0": {
+            "SPOT": { "h": "77-110m", "v": "6-8m/s", "p": "Ironbow", "r": "18-45°C", "n": "Eccellenti - Target molto grande" },
+            "SEARCH": { "h": "66-95m", "v": "5-7m/s", "p": "White Hot", "r": "5-45°C", "n": "Alt. ridotta per ottica 9mm (Max 95m)" },
+            "IDENTIFY": { "h": "31-45m", "v": "2-4m/s", "p": "Black Hot", "r": "20-38°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" }
+        },
+        "0-10": {
+            "SPOT": { "h": "70-100m", "v": "6-8m/s", "p": "Ironbow", "r": "18-45°C", "n": "Molto evidenti - Target grande" },
+            "SEARCH": { "h": "62-90m", "v": "5-7m/s", "p": "White Hot", "r": "5-45°C", "n": "Sagoma ampia" },
+            "IDENTIFY": { "h": "31-45m", "v": "2-4m/s", "p": "Black Hot", "r": "20-38°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" }
+        },
+        "10-20": {
+            "SPOT": { "h": "77-110m", "v": "6-8m/s", "p": "Ironbow", "r": "20-45°C", "n": "Alta visibilità anche a distanza" },
+            "SEARCH": { "h": "66-95m", "v": "5-7m/s", "p": "White Hot", "r": "5-45°C", "n": "Alt. ridotta per ottica 9mm (Max 95m)" },
+            "IDENTIFY": { "h": "31-45m", "v": "2-4m/s", "p": "Black Hot", "r": "20-38°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" }
+        },
+        "20-30": {
+            "SPOT": { "h": "70-100m", "v": "5-7m/s", "p": "Ironbow", "r": "20-45°C", "n": "Dimensioni compensano delta ridotto" },
+            "SEARCH": { "h": "62-90m", "v": "4-6m/s", "p": "White Hot", "r": "5-45°C", "n": "Ancora ben visibili" },
+            "IDENTIFY": { "h": "31-45m", "v": "2-4m/s", "p": "Black Hot", "r": "20-38°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" }
+        },
+        ">30": {
+             "SPOT": { "h": "20-30m", "v": "2m/s", "p": "Isoterme", "r": "35-40°C", "n": "QUASI IMPOSSIBILE" },
+            "SEARCH": { "h": "56-80m", "v": "4-6m/s", "p": "White Hot", "r": "5-45°C", "n": "Difficile ma dimensioni aiutano" },
+            "IDENTIFY": { "h": "31-45m", "v": "2-3m/s", "p": "Black Hot", "r": "20-38°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" }
+        }
+    },
+    "CERVIDI": {
+        "<0": {
+            "SPOT": { "h": "56-80m", "v": "4-6m/s", "p": "Ironbow", "r": "15-40°C", "n": "Ottimi su neve - Contrasto forte" },
+            "SEARCH": { "h": "49-70m", "v": "3-5m/s", "p": "White Hot", "r": "5-40°C", "n": "Pattern zigzag consigliato" },
+            "IDENTIFY": { "h": "31-45m", "v": "1-2m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" }
+        },
+        "0-10": {
+            "SPOT": { "h": "56-80m", "v": "4-6m/s", "p": "Ironbow", "r": "15-40°C", "n": "Macchia netta anche in bosco" },
+            "SEARCH": { "h": "49-70m", "v": "3-5m/s", "p": "White Hot", "r": "5-40°C", "n": "Scansione lenta efficace" },
+            "IDENTIFY": { "h": "31-45m", "v": "1-2m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" }
+        },
+        "10-20": {
+            "SPOT": { "h": "56-80m", "v": "4-6m/s", "p": "Ironbow", "r": "18-40°C", "n": "Buona visibilità in bosco" },
+            "SEARCH": { "h": "49-70m", "v": "3-5m/s", "p": "White Hot", "r": "5-40°C", "n": "Sagoma completa" },
+            "IDENTIFY": { "h": "31-45m", "v": "1-2m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" }
+        },
+        "20-30": {
+             "SPOT": { "h": "35-50m", "v": "3-4m/s", "p": "Rainbow", "r": "20-40°C", "n": "" },
+            "SEARCH": { "h": "42-60m", "v": "2-4m/s", "p": "White Hot", "r": "5-40°C", "n": "Delta ridotto - Volare lento" },
+            "IDENTIFY": { "h": "31-45m", "v": "1-2m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" }
+        },
+        ">30": {
+             "SPOT": { "h": "20-30m", "v": "2m/s", "p": "Isoterme", "r": "35-40°C", "n": "QUASI IMPOSSIBILE" },
+            "SEARCH": { "h": "35-50m", "v": "2-3m/s", "p": "White Hot", "r": "5-40°C", "n": "Molto difficile - Ore fresche migliori" },
+            "IDENTIFY": { "h": "28-40m", "v": "1-2m/s", "p": "Black Hot", "r": "18-35°C", "n": "Solo se in movimento" }
+        }
+    },
+    "CINGHIALI": {
+        "<0": {
+            "SPOT": { "h": "49-70m", "v": "4-6m/s", "p": "Red Hot", "r": "18-42°C", "n": "Eccellenti - Massa corporea alta" },
+            "SEARCH": { "h": "49-70m", "v": "3-5m/s", "p": "White Hot", "r": "5-42°C", "n": "Branchi molto evidenti" },
+            "IDENTIFY": { "h": "24-35m", "v": "1-2m/s", "p": "Black Hot", "r": "20-36°C", "n": "Alt. ridotta per ottica 9mm (Max 35m)" }
+        },
+        "0-10": {
+            "SPOT": { "h": "49-70m", "v": "4-6m/s", "p": "Red Hot", "r": "18-42°C", "n": "Corpo massiccio - Spesso in branco" },
+            "SEARCH": { "h": "49-70m", "v": "3-5m/s", "p": "White Hot", "r": "5-42°C", "n": "Gruppi familiari" },
+            "IDENTIFY": { "h": "24-35m", "v": "1-2m/s", "p": "Black Hot", "r": "20-36°C", "n": "Alt. ridotta per ottica 9mm (Max 35m)" }
+        },
+        "10-20": {
+            "SPOT": { "h": "49-70m", "v": "4-6m/s", "p": "Red Hot", "r": "20-42°C", "n": "Pattern familiare riconoscibile" },
+            "SEARCH": { "h": "49-70m", "v": "3-5m/s", "p": "White Hot", "r": "5-42°C", "n": "Scansione efficace" },
+            "IDENTIFY": { "h": "24-35m", "v": "1-2m/s", "p": "Black Hot", "r": "20-36°C", "n": "Alt. ridotta per ottica 9mm (Max 35m)" }
+        },
+        "20-30": {
+             "SPOT": { "h": "35-50m", "v": "3-4m/s", "p": "Rainbow", "r": "20-40°C", "n": "" },
+            "SEARCH": { "h": "42-60m", "v": "2-4m/s", "p": "White Hot", "r": "5-42°C", "n": "SPOT ingannevole - Preferire SEARCH" },
+            "IDENTIFY": { "h": "24-35m", "v": "1-2m/s", "p": "Black Hot", "r": "20-36°C", "n": "Alt. ridotta per ottica 9mm (Max 35m)" }
+        },
+        ">30": {
+             "SPOT": { "h": "20-30m", "v": "2m/s", "p": "Isoterme", "r": "35-40°C", "n": "QUASI IMPOSSIBILE" },
+            "SEARCH": { "h": "35-50m", "v": "2-3m/s", "p": "White Hot", "r": "5-42°C", "n": "Difficile - Cercare all'alba/tramonto" },
+            "IDENTIFY": { "h": "24-35m", "v": "1-2m/s", "p": "Black Hot", "r": "20-36°C", "n": "Alt. ridotta per ottica 9mm (Max 35m)" }
+        }
+    },
+    "CONIGLI": {
+        "<0": {
+            "SPOT": { "h": "35-50m", "v": "2-4m/s", "p": "Ironbow", "r": "15-38°C", "n": "Macchia visibile su neve - Volare BASSO" },
+            "SEARCH": { "h": "35-50m", "v": "2-3m/s", "p": "White Hot", "r": "5-38°C", "n": "Buon contrasto su neve" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "18-34°C", "n": "Zoom utile se disponibile" }
+        },
+        "0-10": {
+            "SPOT": { "h": "35-50m", "v": "2-4m/s", "p": "Ironbow", "r": "15-38°C", "n": "Piccola macchia - Volare BASSO" },
+            "SEARCH": { "h": "35-50m", "v": "2-3m/s", "p": "White Hot", "r": "5-38°C", "n": "Spesso immobili - Scansione lenta" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "18-34°C", "n": "Sensore zoom utile se disponibile" }
+        },
+        "10-20": {
+            "SPOT": { "h": "35-50m", "v": "2-3m/s", "p": "Ironbow", "r": "18-38°C", "n": "Target difficile - Massima attenzione" },
+            "SEARCH": { "h": "35-50m", "v": "2-3m/s", "p": "White Hot", "r": "5-38°C", "n": "Movimento aiuta identificazione" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "18-34°C", "n": "Conferma breve - Finestra stretta" }
+        },
+        "20-30": {
+             "SPOT": { "h": "15m", "v": "2m/s", "p": "Rain", "r": "25-35°C", "n": "" },
+            "SEARCH": { "h": "28-40m", "v": "1-2m/s", "p": "White Hot", "r": "5-38°C", "n": "Quasi invisibili - Volo MOLTO basso" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "18-34°C", "n": "Conferma difficile" }
+        },
+        ">30": {
+             "SPOT": { "h": "10m", "v": "1m/s", "p": "Iso", "r": "35-40°C", "n": "Critico" },
+            "SEARCH": { "h": "21-30m", "v": "1m/s", "p": "Black Hot", "r": "30-38°C", "n": "Impossibile rilevare se immobili" },
+            "IDENTIFY": { "h": "14-20m", "v": "1m/s", "p": "Fusion", "r": "30-38°C", "n": "Critico" }
+        }
+    },
+    "VOLPI": {
+        "<0": {
+            "SPOT": { "h": "35-50m", "v": "2-4m/s", "p": "Red Hot", "r": "15-38°C", "n": "Macchia netta in movimento" },
+            "SEARCH": { "h": "35-50m", "v": "2-3m/s", "p": "White Hot", "r": "5-38°C", "n": "Coda molto visibile termicamente" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "18-34°C", "n": "Sagoma inconfondibile" }
+        },
+        "0-10": {
+            "SPOT": { "h": "35-50m", "v": "2-4m/s", "p": "Red Hot", "r": "15-38°C", "n": "Buon contrasto nel sottobosco" },
+            "SEARCH": { "h": "35-50m", "v": "2-3m/s", "p": "White Hot", "r": "5-38°C", "n": "Movimento rapido e furtivo" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "18-34°C", "n": "Zoom utile" }
+        },
+        "10-20": {
+            "SPOT": { "h": "35-50m", "v": "2-3m/s", "p": "Ironbow", "r": "18-38°C", "n": "Mimetismo termico parziale" },
+            "SEARCH": { "h": "35-50m", "v": "2-3m/s", "p": "White Hot", "r": "5-38°C", "n": "Cercare movimento" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "18-34°C", "n": "Conferma rapida necessaria" }
+        },
+        "20-30": {
+             "SPOT": { "h": "15m", "v": "2m/s", "p": "Rain", "r": "25-35°C", "n": "" },
+            "SEARCH": { "h": "28-40m", "v": "1-2m/s", "p": "White Hot", "r": "5-38°C", "n": "Difficile - Volo basso" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "18-34°C", "n": "Difficile se ferma" }
+        },
+        ">30": {
+             "SPOT": { "h": "10m", "v": "1m/s", "p": "Iso", "r": "35-40°C", "n": "Critico" },
+            "SEARCH": { "h": "21-30m", "v": "1m/s", "p": "Black Hot", "r": "30-38°C", "n": "Caccia notturna consigliata" },
+            "IDENTIFY": { "h": "14-20m", "v": "1m/s", "p": "Fusion", "r": "30-38°C", "n": "Critico" }
+        }
+    },
+    "LUPI": {
+        "<0": {
+            "SPOT": { "h": "49-70m", "v": "4-6m/s", "p": "Ironbow", "r": "0-40°C", "n": "Range esteso per pelo isolante" },
+            "SEARCH": { "h": "31-45m", "v": "3-4m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "0-36°C", "n": "Branco o isolati" }
+        },
+        "0-10": {
+            "SPOT": { "h": "49-70m", "v": "4-6m/s", "p": "Ironbow", "r": "0-40°C", "n": "Range esteso per pelo isolante" },
+            "SEARCH": { "h": "31-45m", "v": "3-4m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "0-36°C", "n": "Attenzione alla postura coda" }
+        },
+        "10-20": {
+            "SPOT": { "h": "49-70m", "v": "4-6m/s", "p": "Ironbow", "r": "20-40°C", "n": "Alt. ridotta per ottica 9mm (Max 70m)" },
+            "SEARCH": { "h": "31-45m", "v": "3-4m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "18-36°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" }
+        },
+        "20-30": {
+             "SPOT": { "h": "35-50m", "v": "3-4m/s", "p": "Rainbow", "r": "20-40°C", "n": "" },
+            "SEARCH": { "h": "31-45m", "v": "3-4m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "18-36°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" }
+        },
+        ">30": {
+             "SPOT": { "h": "20-30m", "v": "2m/s", "p": "Isoterme", "r": "35-40°C", "n": "QUASI IMPOSSIBILE" },
+            "SEARCH": { "h": "31-45m", "v": "2-3m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 45m)" },
+            "IDENTIFY": { "h": "21-30m", "v": "1-2m/s", "p": "Black Hot", "r": "18-36°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" }
+        }
+    },
+    "ORSI": {
+        "<0": {
+            "SPOT": { "h": "70-100m", "v": "5-7m/s", "p": "Ironbow", "r": "0-38°C", "n": "Range esteso per pelo isolante" },
+            "SEARCH": { "h": "49-70m", "v": "3-5m/s", "p": "White Hot", "r": "5-38°C", "n": "Massa enorme - Ben visibile" },
+            "IDENTIFY": { "h": "42-60m", "v": "1-2m/s", "p": "Black Hot", "r": "0-34°C", "n": "Alt. ridotta per ottica 9mm (Max 60m)" }
+        },
+        "0-10": {
+            "SPOT": { "h": "70-100m", "v": "5-7m/s", "p": "Ironbow", "r": "0-38°C", "n": "Range esteso per pelo isolante" },
+            "SEARCH": { "h": "49-70m", "v": "3-5m/s", "p": "White Hot", "r": "5-38°C", "n": "Evidente contrasto" },
+            "IDENTIFY": { "h": "42-60m", "v": "1-2m/s", "p": "Black Hot", "r": "0-34°C", "n": "Alt. ridotta per ottica 9mm (Max 60m)" }
+        },
+        "10-20": {
+            "SPOT": { "h": "70-100m", "v": "5-7m/s", "p": "Ironbow", "r": "18-38°C", "n": "Ben visibile" },
+            "SEARCH": { "h": "49-70m", "v": "3-5m/s", "p": "White Hot", "r": "5-38°C", "n": "Alt. ridotta per ottica 9mm (Max 70m)" },
+            "IDENTIFY": { "h": "42-60m", "v": "1-2m/s", "p": "Black Hot", "r": "18-34°C", "n": "Alt. ridotta per ottica 9mm (Max 60m)" }
+        },
+        "20-30": {
+             "SPOT": { "h": "35-50m", "v": "3-4m/s", "p": "Rainbow", "r": "20-40°C", "n": "" },
+            "SEARCH": { "h": "49-70m", "v": "2-4m/s", "p": "White Hot", "r": "5-38°C", "n": "Isolamento pelo riduce segnale" },
+            "IDENTIFY": { "h": "42-60m", "v": "1-2m/s", "p": "Black Hot", "r": "18-34°C", "n": "Alt. ridotta per ottica 9mm (Max 60m)" }
+        },
+        ">30": {
+             "SPOT": { "h": "20-30m", "v": "2m/s", "p": "Isoterme", "r": "35-40°C", "n": "QUASI IMPOSSIBILE" },
+            "SEARCH": { "h": "49-70m", "v": "2-3m/s", "p": "White Hot", "r": "5-38°C", "n": "Critico con alte temperature" },
+            "IDENTIFY": { "h": "42-60m", "v": "1-2m/s", "p": "Black Hot", "r": "18-34°C", "n": "Alt. ridotta per ottica 9mm (Max 60m)" }
+        }
+    },
+    "MAIALI": {
+        "<0": {
+            "SPOT": { "h": "49-70m", "v": "4-6m/s", "p": "Red Hot", "r": "0-40°C", "n": "Range esteso per pelo isolante" },
+            "SEARCH": { "h": "42-60m", "v": "3-4m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 60m)" },
+            "IDENTIFY": { "h": "24-35m", "v": "1-2m/s", "p": "Black Hot", "r": "0-35°C", "n": "Alt. ridotta per ottica 9mm (Max 35m)" }
+        },
+        "0-10": {
+            "SPOT": { "h": "49-70m", "v": "4-6m/s", "p": "Red Hot", "r": "0-40°C", "n": "Range esteso per pelo isolante" },
+            "SEARCH": { "h": "42-60m", "v": "3-4m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 60m)" },
+            "IDENTIFY": { "h": "24-35m", "v": "1-2m/s", "p": "Black Hot", "r": "0-35°C", "n": "Alt. ridotta per ottica 9mm (Max 35m)" }
+        },
+        "10-20": {
+            "SPOT": { "h": "49-70m", "v": "4-6m/s", "p": "Ironbow", "r": "20-40°C", "n": "Buon contrasto su fango freddo" },
+            "SEARCH": { "h": "42-60m", "v": "3-4m/s", "p": "White Hot", "r": "5-40°C", "n": "Alt. ridotta per ottica 9mm (Max 60m)" },
+            "IDENTIFY": { "h": "24-35m", "v": "1-2m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 35m)" }
+        },
+        "20-30": {
+             "SPOT": { "h": "35-50m", "v": "3-4m/s", "p": "Rainbow", "r": "20-40°C", "n": "" },
+            "SEARCH": { "h": "35-50m", "v": "2-3m/s", "p": "White Hot", "r": "5-40°C", "n": "Se coperti di fango segnale debole" },
+            "IDENTIFY": { "h": "24-35m", "v": "1-2m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 35m)" }
+        },
+        ">30": {
+             "SPOT": { "h": "20-30m", "v": "2m/s", "p": "Isoterme", "r": "35-40°C", "n": "QUASI IMPOSSIBILE" },
+            "SEARCH": { "h": "35-50m", "v": "1-2m/s", "p": "White Hot", "r": "5-40°C", "n": "Caldo + fango = Invisibili" },
+            "IDENTIFY": { "h": "24-35m", "v": "1-2m/s", "p": "Black Hot", "r": "18-35°C", "n": "Alt. ridotta per ottica 9mm (Max 35m)" }
+        }
+    },
+    "RODITORI": {
+        "<0": {
+            "SPOT": { "h": "10-15m", "v": "1-2m/s", "p": "Red Hot", "r": "0-20°C", "n": "Alt. ridotta per ottica 9mm (Max 15m)" },
+            "SEARCH": { "h": "7-10m", "v": "1m/s", "p": "White Hot", "r": "0-15°C", "n": "Alt. ridotta per ottica 9mm (Max 10m)" },
+            "IDENTIFY": { "h": "5-5m", "v": "0-1m/s", "p": "Black Hot", "r": "0-20°C", "n": "Alt. ridotta per ottica 9mm (Max 5m)" }
+        },
+        "0-10": {
+            "SPOT": { "h": "10-15m", "v": "1-2m/s", "p": "Red Hot", "r": "5-25°C", "n": "Alt. ridotta per ottica 9mm (Max 15m)" },
+            "SEARCH": { "h": "7-10m", "v": "1m/s", "p": "White Hot", "r": "0-20°C", "n": "Alt. ridotta per ottica 9mm (Max 10m)" },
+            "IDENTIFY": { "h": "5-5m", "v": "0-1m/s", "p": "Black Hot", "r": "5-25°C", "n": "Alt. ridotta per ottica 9mm (Max 5m)" }
+        },
+        "10-20": {
+            "SPOT": { "h": "7-10m", "v": "1m/s", "p": "Ironbow", "r": "15-30°C", "n": "Alt. ridotta per ottica 9mm (Max 10m)" },
+            "SEARCH": { "h": "7-10m", "v": "1m/s", "p": "White Hot", "r": "10-25°C", "n": "Alt. ridotta per ottica 9mm (Max 10m)" },
+            "IDENTIFY": { "h": "5-5m", "v": "0-1m/s", "p": "Black Hot", "r": "15-30°C", "n": "Alt. ridotta per ottica 9mm (Max 5m)" }
+        },
+        "20-30": {
+            "SEARCH": { "h": "--", "v": "--", "p": "--", "r": "--", "n": "NON RILEVABILE" },
+            "IDENTIFY": { "h": "--", "v": "--", "p": "--", "r": "--", "n": "NON RILEVABILE" }
+        },
+        ">30": {
+            "SEARCH": { "h": "--", "v": "--", "p": "--", "r": "--", "n": "NON RILEVABILE" },
+            "IDENTIFY": { "h": "--", "v": "--", "p": "--", "r": "--", "n": "NON RILEVABILE" }
+        }
+    },
+    "UCCELLI": {
+        "<0": {
+            "SPOT": { "h": "21-30m", "v": "2-4m/s", "p": "Red Hot", "r": "40-60°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" },
+            "SEARCH": { "h": "10-15m", "v": "2-3m/s", "p": "White Hot", "r": "40-60°C", "n": "Alt. ridotta per ottica 9mm (Max 15m)" },
+            "IDENTIFY": { "h": "5-5m", "v": "1-2m/s", "p": "Black Hot", "r": "30-50°C", "n": "Alt. ridotta per ottica 9mm (Max 5m)" }
+        },
+        "0-10": {
+            "SPOT": { "h": "21-30m", "v": "3-5m/s", "p": "Red Hot", "r": "40-60°C", "n": "Alt. ridotta per ottica 9mm (Max 30m)" },
+            "SEARCH": { "h": "10-15m", "v": "2-4m/s", "p": "White Hot", "r": "40-60°C", "n": "Alt. ridotta per ottica 9mm (Max 15m)" },
+            "IDENTIFY": { "h": "5-5m", "v": "1-2m/s", "p": "Black Hot", "r": "30-50°C", "n": "Alt. ridotta per ottica 9mm (Max 5m)" }
+        },
+        "10-20": {
+            "SPOT": { "h": "10m", "v": "1m/s", "p": "Iso", "r": "35-40°C", "n": "Critico" },
+            "SEARCH": { "h": "10-15m", "v": "2-3m/s", "p": "White Hot", "r": "30-50°C", "n": "Alt. ridotta per ottica 9mm (Max 15m)" },
+            "IDENTIFY": { "h": "5-5m", "v": "0-1m/s", "p": "Black Hot", "r": "20-40°C", "n": "Alt. ridotta per ottica 9mm (Max 5m)" }
+        },
+        "20-30": {
+            "SEARCH": { "h": "--", "v": "--", "p": "--", "r": "--", "n": "NON RILEVABILE" },
+            "IDENTIFY": { "h": "--", "v": "--", "p": "--", "r": "--", "n": "NON RILEVABILE" }
+        },
+        ">30": {
+            "SEARCH": { "h": "--", "v": "--", "p": "--", "r": "--", "n": "NON RILEVABILE" },
+            "IDENTIFY": { "h": "--", "v": "--", "p": "--", "r": "--", "n": "NON RILEVABILE" }
+        }
+    }
+};
+
+        function updateDashboard() {
+            const target = document.getElementById('targetSelect').value;
+            const temp = document.getElementById('tempSelect').value;
+            
+            // Fallback object
+            const defaultData = { h: "--", v: "--", p: "--", r: "--", n: "Dati non disponibili" };
+            
+            let dataSpot = defaultData;
+            let dataSearch = defaultData;
+            let dataID = defaultData;
+
+            // Logica di accesso dati sicura
+            if (sarData[target]) {
+                const targetGroup = sarData[target];
+                if (targetGroup[temp]) {
+                    const tData = targetGroup[temp];
+                    // Assegna se esiste, altrimenti resta default
+                    if(tData.SPOT) dataSpot = tData.SPOT;
+                    if(tData.SEARCH) dataSearch = tData.SEARCH;
+                    if(tData.IDENTIFY) dataID = tData.IDENTIFY;
+                }
+            }
+
+            // Aggiorna DOM Spot
+            document.getElementById('spot-alt').innerText = dataSpot.h || "--";
+            document.getElementById('spot-vel').innerText = dataSpot.v || "--";
+            document.getElementById('spot-pal').innerText = dataSpot.p || "--";
+            document.getElementById('spot-range').innerText = dataSpot.r || "--";
+            document.getElementById('spot-note').innerText = dataSpot.n || "";
+
+            // Aggiorna DOM Search
+            document.getElementById('search-alt').innerText = dataSearch.h || "--";
+            document.getElementById('search-vel').innerText = dataSearch.v || "--";
+            document.getElementById('search-pal').innerText = dataSearch.p || "--";
+            document.getElementById('search-range').innerText = dataSearch.r || "--";
+            document.getElementById('search-note').innerText = dataSearch.n || "";
+
+            // Aggiorna DOM Identify
+            document.getElementById('id-alt').innerText = dataID.h || "--";
+            document.getElementById('id-vel').innerText = dataID.v || "--";
+            document.getElementById('id-pal').innerText = dataID.p || "--";
+            document.getElementById('id-range').innerText = dataID.r || "--";
+            document.getElementById('id-note').innerText = dataID.n || "";
+
+            // Logic Warnings
+            const warningBox = document.getElementById('global-warning');
+            let warningText = "";
+
+            if (temp === ">30") {
+                warningText = "⚠️ CRITICITÀ TERMICA: Il terreno caldo nasconde i target. Volare solo all'alba o al tramonto.";
+            } else if (temp === "20-30" && (target === "RODITORI" || target === "UCCELLI")) {
+                warningText = "⛔ IMPOSSIBILE: Target troppo piccolo per il delta termico attuale.";
+            }
+
+            if (warningText) {
+                warningBox.style.display = 'block';
+                warningBox.innerText = warningText;
+            } else {
+                warningBox.style.display = 'none';
+            }
+        }
+
+        // Init all'avvio
+        updateDashboard();
+    </script>
+</body>
+</html>
